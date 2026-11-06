@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hydraulic motor formulas and symbols</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📐</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=STIX+Two+Text:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+.two2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:16px}
+@media (max-width:900px){.two2{grid-template-columns:minmax(0,1fr)}}
+#pulley text,#circuit text{font:600 13px var(--cond);fill:var(--ink)}
+#circuit .ln{stroke:var(--ink);stroke-width:2.2;fill:none} #circuit .hp{stroke:var(--hp);stroke-width:4} #circuit .lp{stroke:var(--lp);stroke-width:4}
+#circuit .box{fill:var(--panel);stroke:var(--ink);stroke-width:2.2}
+#circuit .fillk{fill:var(--ink)}
+.dcv button{min-width:80px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+<header class="top">
+  <div><h1>Formulas and symbols</h1><p class="sub">The few relationships that describe every hydraulic motor, in pure form and in the practical unit forms found in textbooks and datasheets.</p></div>
+</header>
+
+<div class="card">
+  <h3>The core formulas</h3>
+  <div class="tablewrap"><table class="ftable">
+    <thead><tr><th>Quantity</th><th>Pure form (consistent units)</th><th>SI practical form</th><th>US practical form</th></tr></thead>
+    <tbody>
+      <tr><td>Speed from flow</td><td class="eq">N = Q·η<sub>v</sub> / V<sub>D</sub></td><td class="eq">N [rpm] = 1000·Q [L/min]·η<sub>v</sub> / V<sub>D</sub> [cm³]</td><td class="eq">N [rpm] = 231·Q [gpm]·η<sub>v</sub> / V<sub>D</sub> [in³]</td></tr>
+      <tr><td>Torque from pressure</td><td class="eq">T = Δp·V<sub>D</sub>·η<sub>m</sub> / 2π</td><td class="eq">T [N·m] = Δp [bar]·V<sub>D</sub> [cm³]·η<sub>m</sub> / 20π</td><td class="eq">T [lb·in] = Δp [psi]·V<sub>D</sub> [in³]·η<sub>m</sub> / 2π</td></tr>
+      <tr><td>Flow needed</td><td class="eq">Q = V<sub>D</sub>·N / η<sub>v</sub></td><td class="eq">Q [L/min] = V<sub>D</sub> [cm³]·N [rpm] / (1000·η<sub>v</sub>)</td><td class="eq">Q [gpm] = V<sub>D</sub> [in³]·N [rpm] / (231·η<sub>v</sub>)</td></tr>
+      <tr><td>Hydraulic power in</td><td class="eq">P<sub>in</sub> = Q·Δp</td><td class="eq">P [kW] = Q [L/min]·Δp [bar] / 600</td><td class="eq">P [hp] = Q [gpm]·Δp [psi] / 1714</td></tr>
+      <tr><td>Shaft power out</td><td class="eq">P<sub>out</sub> = T·ω = T·2πN</td><td class="eq">P [kW] = T [N·m]·N [rpm] / 9549</td><td class="eq">P [hp] = T [lb·in]·N [rpm] / 63 025</td></tr>
+      <tr><td>Overall efficiency</td><td class="eq">η<sub>o</sub> = η<sub>v</sub>·η<sub>m</sub> = P<sub>out</sub> / P<sub>in</sub></td><td colspan="2">Typical η<sub>o</sub>: gear 0.75 to 0.85, vane 0.75 to 0.85, geroller 0.75 to 0.85, piston 0.85 to 0.95.</td></tr>
+      <tr><td>Torque from a force</td><td class="eq">T = F·r</td><td class="eq">T [N·m] = F [N]·r [m]</td><td class="eq">T [lb·in] = F [lb]·r [in]</td></tr>
+      <tr><td>Oscillator torque</td><td class="eq">T = p·V / θ</td><td colspan="2">Energy balance for any limited-rotation actuator: V is the oil used for a swing of θ radians.</td></tr>
+    </tbody></table></div>
+  <p class="note">Where the constants come from: 1 bar × 1 cm³ = 0.1 N·m of work, giving 20π; 1 US gallon = 231 in³; 1 hp = 33 000 ft·lbf/min, giving 1714 and 63 025; 60 000 / 2π = 9549. Typical efficiencies are indicative ranges only; use the datasheet for real selection.</p>
+</div>
+
+<div class="two2">
+  <div class="card">
+    <h3>Torque = force × radius</h3>
+    <p>The same load gives more torque on a bigger pulley. Drag the sliders.</p>
+    <div class="ctlrow"><label>Load <input type="range" id="pl" min="10" max="200" value="75"> <span class="readout" id="plv"></span></label><label>Pulley radius <input type="range" id="pr" min="1" max="8" step=".5" value="3"> <span class="readout" id="prv"></span></label>
+      <span class="seg" role="group" aria-label="Units"><button data-pu="us" aria-pressed="true">lb, in</button><button data-pu="si" aria-pressed="false">N, mm</button></span></div>
+    <svg id="pulley" viewBox="0 0 420 300" style="width:100%;max-height:320px" role="img" aria-label="Pulley and hanging load showing torque equals force times radius"></svg>
+  </div>
+  <div class="card">
+    <h3>A basic motor circuit</h3>
+    <p>Choose a valve position to run the motor forward, stop it, or reverse it.</p>
+    <div class="seg dcv" role="group" aria-label="Valve position"><button data-v="fwd" aria-pressed="true">Forward</button><button data-v="stop" aria-pressed="false">Stop (centre)</button><button data-v="rev" aria-pressed="false">Reverse</button></div>
+    <svg id="circuit" viewBox="0 0 420 340" style="width:100%;max-height:360px;margin-top:8px" role="img" aria-label="Motor circuit with pump, relief valve, directional valve and motor"></svg>
+    <p class="note" id="circNote"></p>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h3>Schematic symbols</h3>
+  <div class="symgrid">
+    <figure><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="26"/><line x1="50" y1="2" x2="50" y2="24"/><line x1="50" y1="76" x2="50" y2="98"/><polygon class="fill" points="42,25 58,25 50,37"/></svg><figcaption>Unidirectional, fixed displacement</figcaption></figure>
+    <figure><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="26"/><line x1="50" y1="2" x2="50" y2="24"/><line x1="50" y1="76" x2="50" y2="98"/><polygon class="fill" points="42,25 58,25 50,37"/><polygon class="fill" points="42,75 58,75 50,63"/></svg><figcaption>Bidirectional, fixed displacement</figcaption></figure>
+    <figure><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="26"/><line x1="50" y1="2" x2="50" y2="24"/><line x1="50" y1="76" x2="50" y2="98"/><polygon class="fill" points="42,25 58,25 50,37"/><polygon class="fill" points="42,75 58,75 50,63"/><line x1="22" y1="80" x2="80" y2="20"/><polygon class="fill" points="80,20 70,24 76,30"/><path d="M68,68 L80,82 L80,92" stroke-dasharray="4 3"/><path d="M72,92 H88 M74,96 H86"/></svg><figcaption>Bidirectional, variable displacement, with case drain</figcaption></figure>
+    <figure><svg viewBox="0 0 100 100"><path d="M22,62 A28,28 0 0 1 78,62 Z"/><line x1="38" y1="62" x2="38" y2="92"/><line x1="62" y1="62" x2="62" y2="92"/><polygon class="fill" points="31,52 45,52 38,40"/><polygon class="fill" points="55,52 69,52 62,40"/></svg><figcaption>Oscillator (rotary actuator), bidirectional</figcaption></figure>
+  </div>
+  <p class="note">In a motor symbol the triangles point inward (energy flows in as oil). In a pump symbol they point outward. Each triangle marks a direction the motor can be driven.</p>
+</div>
+<footer>Symbols are simplified ISO 1219 style.</footer>
+</div>
+<script src="js/nav.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id); let pu = 'us';
+  function pulley() { const F = +$('pl').value, r = +$('pr').value, us = pu === 'us';
+    const Fu = us ? F : F * 4.448, ru = us ? r : r * 25.4, T = us ? F * r : F * 4.448 * r * 0.0254;
+    $('plv').textContent = us ? `${F} lb` : `${(F * 4.448).toFixed(0)} N`; $('prv').textContent = us ? `${r} in` : `${(r * 25.4).toFixed(0)} mm`;
+    const R = 18 + r * 13, cx = 150, cy = 110, dropY = cy + 150 - Math.min(60, F * .15);
+    $('pulley').innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" style="fill:var(--steel-light);stroke:var(--steel-dark);stroke-width:2"/><circle cx="${cx}" cy="${cy}" r="6" style="fill:var(--steel-dark)"/>
+      <line x1="${cx}" y1="${cy}" x2="${cx + R}" y2="${cy}" style="stroke:var(--ink);stroke-width:1.5;stroke-dasharray:4 3"/><text x="${cx + R / 2}" y="${cy - 6}" text-anchor="middle">r</text>
+      <line x1="${cx + R}" y1="${cy}" x2="${cx + R}" y2="${dropY}" style="stroke:var(--ink);stroke-width:2"/>
+      <path d="M${cx + R - 22},${dropY + 34} L${cx + R - 14},${dropY} L${cx + R + 14},${dropY} L${cx + R + 22},${dropY + 34} Z" style="fill:var(--ink)"/><text x="${cx + R}" y="${dropY + 24}" text-anchor="middle" style="fill:var(--panel)">${us ? F + ' lb' : (F * 4.448).toFixed(0) + ' N'}</text>
+      <path d="M${cx - R * .8},${cy - R - 12} A${R + 12},${R + 12} 0 0 1 ${cx + R * .8},${cy - R - 12}" style="fill:none;stroke:var(--lp);stroke-width:5"/>
+      <text x="300" y="70" style="font-size:20px">T = F × r</text><text x="300" y="100" style="font-size:20px">T = ${us ? F : (F * 4.448).toFixed(0)} × ${us ? r : (r * 0.0254).toFixed(4)}</text>
+      <text x="300" y="130" style="font-size:22px;fill:var(--lp)">T = ${us ? T.toFixed(0) + ' lb·in' : T.toFixed(1) + ' N·m'}</text>`; }
+  ['pl', 'pr'].forEach(id => $(id).addEventListener('input', pulley));
+  document.querySelectorAll('[data-pu]').forEach(b => b.addEventListener('click', () => { pu = b.dataset.pu; document.querySelectorAll('[data-pu]').forEach(x => x.setAttribute('aria-pressed', x === b)); pulley(); }));
+  pulley();
+  /* motor circuit */
+  let pos = 'fwd', ang = 0;
+  function circuit() {
+    const a = pos === 'fwd' ? ['hp', 'lp'] : pos === 'rev' ? ['lp', 'hp'] : ['ln', 'ln'];
+    const relief = pos === 'stop' ? 'hp' : 'ln';
+    $('circuit').innerHTML = `
+      <circle cx="210" cy="55" r="32" class="box"/><polygon class="fillk" points="200,24 220,24 210,38"/><polygon class="fillk" points="200,86 220,86 210,72"/>
+      <g transform="rotate(${ang} 210 55)"><line x1="210" y1="55" x2="210" y2="33" style="stroke:var(--accent);stroke-width:4"/></g><text x="255" y="40">Hydraulic motor</text>
+      <path d="M190,62 H150 V160" class="ln ${a[0]}"/><path d="M230,62 H270 V160" class="ln ${a[1]}"/>
+      <rect x="110" y="160" width="200" height="50" class="box"/><line x1="176" y1="160" x2="176" y2="210" class="ln"/><line x1="243" y1="160" x2="243" y2="210" class="ln"/>
+      <rect x="${pos === 'fwd' ? 110 : pos === 'stop' ? 176 : 243}" y="160" width="67" height="50" style="fill:var(--accent);opacity:.35"/>
+      <path d="M128,205 L128,165 M155,205 L155,165" class="ln"/><path d="M262,205 L292,165 M262,165 L292,205" class="ln"/><text x="320" y="190">Directional valve</text>
+      <path d="M150,210 V250 H210" class="ln ${pos === 'stop' ? 'ln' : 'hp'}"/><path d="M270,210 V250 H300 V262" class="ln ${pos === 'stop' ? 'ln' : 'lp'}"/><path d="M288,262 H312 M292,268 H308" class="ln"/>
+      <circle cx="210" cy="295" r="28" class="box"/><polygon class="fillk" points="200,276 220,276 210,264"/><path d="M210,250 V267" class="ln hp"/><text x="130" y="300">Pump</text>
+      <circle cx="90" cy="295" r="20" class="box"/><text x="83" y="300">M</text><line x1="110" y1="295" x2="182" y2="295" class="ln"/>
+      <path d="M210,250 H350 V265" class="ln ${relief}"/><rect x="335" y="265" width="30" height="38" class="box"/><path d="M350,271 L350,297" class="ln"/><polygon class="fillk" points="345,290 355,290 350,298"/><path d="M350,303 V318 H362 M344,318 H368 M348,323 H364" class="ln"/><text x="372" y="285">Relief</text>`;
+    $('circNote').textContent = pos === 'fwd' ? 'Forward: pressure oil (red) goes to the left motor port; the right port returns to tank (blue).' : pos === 'rev' ? 'Reverse: the valve crosses the lines, so the motor turns the other way.' : 'Stop: the motor ports are blocked and the pump flow goes over the relief valve to tank (or through an open centre on some valves). A blocked motor can still coast, so heavy loads need brake or counterbalance valves.';
+  }
+  document.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => { pos = b.dataset.v; document.querySelectorAll('[data-v]').forEach(x => x.setAttribute('aria-pressed', x === b)); circuit(); }));
+  let last = performance.now();
+  (function loop(t) { const dt = Math.min((t - last) / 1000, .05); last = t; ang += (pos === 'fwd' ? 1 : pos === 'rev' ? -1 : 0) * 180 * dt; circuit(); requestAnimationFrame(loop); })(last);
+})();
+</script>
+</body>
+</html>

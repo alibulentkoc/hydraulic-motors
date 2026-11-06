@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hydraulic oscillators (rotary actuators)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=STIX+Two+Text:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="wrap" id="app">
+<header class="top">
+  <div><h1>Oscillators (rotary actuators)</h1><p class="sub">Limited-rotation hydraulic motors: they swing back and forth through a set angle instead of turning continuously.</p></div>
+  <div class="seg" role="group" aria-label="Units"><button data-units="si" aria-pressed="true">SI (metric)</button><button data-units="us" aria-pressed="false">US customary</button></div>
+</header>
+<div class="layout">
+  <nav class="types" aria-label="Oscillator types"><div class="groupname">Types</div><ul id="oscNav"></ul></nav>
+  <main>
+    <div class="card">
+      <div class="figtop"><h2 id="typeName"></h2><div class="seg" role="group" aria-label="View"><button data-mode="2d" aria-pressed="true">Section view</button><button data-mode="3d" aria-pressed="false">Perspective view</button></div></div>
+      <svg class="sec" id="sec" role="img" aria-label="Animated section of the selected oscillator"></svg>
+      <div class="viewer" id="v3d" hidden><div class="views3" role="group" aria-label="Camera"><button data-v3="persp" aria-pressed="true">Perspective</button><button data-v3="front" aria-pressed="false">Front</button><button data-v3="side" aria-pressed="false">Side</button><button data-v3="top" aria-pressed="false">Top</button></div><div class="hint3">Drag to rotate, scroll or pinch to zoom</div></div>
+      <div class="legend" aria-hidden="true"><span><i style="background:var(--hp)"></i>Pressure oil</span><span><i style="background:var(--lp)"></i>Return oil</span></div>
+      <div class="toolbar">
+        <button class="btn" id="play" aria-pressed="true">Pause</button>
+        <label>Position <input type="range" id="pos" min="0" max="1" step="0.001" value="0" aria-label="Swing position"></label>
+        <label>Swing time <select id="spd"><option value="2">2 s</option><option value="4" selected>4 s</option><option value="8">8 s</option></select></label>
+        <label><input type="checkbox" id="labels" checked> Labels</label>
+      </div>
+      <p class="status" id="status" aria-live="polite"></p>
+    </div>
+    <div class="below">
+      <div class="card"><h3>How it works</h3><p id="summary"></p><ol id="steps"></ol><h4>Used for</h4><p id="uses"></p><h4>Watch for</h4><p id="watch"></p></div>
+      <div class="card"><h3>Schematic symbol</h3><div class="symbol"><svg viewBox="0 0 100 100" style="width:120px;height:110px" aria-hidden="true"><path d="M22,62 A28,28 0 0 1 78,62 Z"/><line x1="38" y1="62" x2="38" y2="92"/><line x1="62" y1="62" x2="62" y2="92"/><polygon points="31,52 45,52 38,40" style="fill:var(--ink)"/><polygon points="55,52 69,52 62,40" style="fill:var(--ink)"/></svg></div><p class="note">Oscillator (rotary actuator): bidirectional, limited rotation.</p></div>
+    </div>
+    <div class="card" style="margin-top:16px"><h3>Calculator</h3><div class="calcgrid" id="calcIn"></div>
+      <div class="tablewrap"><table class="calc"><thead><tr><th>Quantity</th><th>Formula</th><th>Substitution (consistent units)</th><th>Result</th></tr></thead><tbody id="calcOut"></tbody></table></div>
+      <p class="note">Every oscillator obeys the same energy balance: torque × swing angle (in radians) = pressure × oil volume used. That is why T = p·V/θ works for all of them.</p></div>
+    <div class="card" style="margin-top:16px">
+      <h3>Oscillator applications</h3>
+      <div class="seg" role="group" aria-label="Application" id="sceneBtns" style="width:max-content;max-width:100%;overflow-x:auto"></div>
+      <svg id="scene" viewBox="-28 -16 56 30" style="display:block;width:100%;max-height:340px;margin-top:10px" role="img" aria-label="Oscillator application animation"></svg>
+      <p id="sceneText" style="margin:8px 0 0"></p><p class="note" id="sceneAngle"></p>
+    </div>
+    <footer>Drawings are simplified and not to scale.</footer>
+  </main>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/common.js"></script>
+<script src="js/planar.js"></script>
+<script src="js/osc.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), H = HM.H, L = OSC.list;
+  const v2 = new PE.View2D($('sec')), v3 = new PE.View3D($('v3d'));
+  let type, u = 0, dir = 1, playing = !matchMedia('(prefers-reduced-motion: reduce)').matches, hold = 0, mode = '2d', inputs = {}, scene = OSC.SCENES[0], su = 0;
+  $('oscNav').innerHTML = L.map(t => `<li><button class="typebtn" data-type="${t.id}">${t.name}</button></li>`).join('');
+  $('oscNav').addEventListener('click', e => { const b = e.target.closest('[data-type]'); if (b) location.hash = b.dataset.type; });
+  window.addEventListener('hashchange', () => select(location.hash.slice(1)));
+  function select(id) { type = L.find(t => t.id === id) || L[0];
+    document.querySelectorAll('[data-type]').forEach(b => b.dataset.type === type.id ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+    $('typeName').textContent = type.name; $('summary').textContent = type.summary; $('uses').textContent = type.uses; $('watch').textContent = type.watch; $('steps').innerHTML = type.steps.map(s => `<li>${s}</li>`).join('');
+    v2.build(type.build()); if (mode === '3d') v3.build(type.build(), true); else v3.dirty = true; u = 0; dir = 1; buildCalc(); }
+  function buildCalc() { const box = $('calcIn'); box.innerHTML = ''; inputs = {};
+    type.calc.inputs.forEach(([id, label, kind, def]) => { inputs[id] = { kind, si: def }; const l = document.createElement('label'); l.innerHTML = `${label}<span class="in"><input type="number" step="any" id="ci-${id}"><span class="u" id="cu-${id}"></span></span>`; box.appendChild(l);
+      l.querySelector('input').addEventListener('change', e => { const x = parseFloat(e.target.value); if (isFinite(x)) inputs[id].si = x / H.EVERY[H.units][kind][1]; calc(); }); });
+    sync(); calc(); }
+  function sync() { for (const id in inputs) { const { kind, si } = inputs[id], E = H.EVERY[H.units][kind]; $('ci-' + id).value = +(si * E[1]).toFixed(Math.max(E[2], 2)); $('cu-' + id).textContent = E[0]; } }
+  function calc() { const v = {}; for (const id in inputs) v[id] = inputs[id].si; $('calcOut').innerHTML = type.calc.rows(v, H).map(r => `<tr><td>${r.label}</td><td class="eq">${r.eq}</td><td class="sub">${r.sub}</td><td class="res">${r.res}</td></tr>`).join(''); }
+  document.querySelectorAll('[data-units]').forEach(b => b.addEventListener('click', () => { H.units = b.dataset.units; document.querySelectorAll('[data-units]').forEach(x => x.setAttribute('aria-pressed', x === b)); sync(); calc(); }));
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { mode = b.dataset.mode; document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    $('sec').style.display = mode === '3d' ? 'none' : ''; $('v3d').hidden = mode !== '3d'; if (mode === '3d') { if (v3.dirty || !v3.root) { v3.build(type.build(), true); v3.dirty = false; } v3.resize(); } }));
+  document.querySelectorAll('[data-v3]').forEach(b => b.addEventListener('click', () => { v3.setView(b.dataset.v3); document.querySelectorAll('[data-v3]').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+  v3.onManual = () => document.querySelectorAll('[data-v3]').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  const syncPlay = () => { $('play').textContent = playing ? 'Pause' : 'Play'; $('play').setAttribute('aria-pressed', playing); }; syncPlay();
+  $('play').addEventListener('click', () => { playing = !playing; syncPlay(); });
+  $('pos').addEventListener('input', e => { playing = false; syncPlay(); const nu = +e.target.value; if (nu !== u) dir = nu > u ? 1 : -1; u = nu; });
+  $('labels').addEventListener('change', e => { $('sec').classList.toggle('nolabels', !e.target.checked); $('v3d').classList.toggle('nolabels', !e.target.checked); });
+  /* scenes */
+  $('sceneBtns').innerHTML = OSC.SCENES.map((s, i) => `<button data-scene="${s.id}" aria-pressed="${i === 0}">${s.name}</button>`).join('');
+  $('sceneBtns').addEventListener('click', e => { const b = e.target.closest('[data-scene]'); if (!b) return; scene = OSC.SCENES.find(s => s.id === b.dataset.scene); su = 0;
+    document.querySelectorAll('[data-scene]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('sceneText').textContent = scene.text; });
+  $('sceneText').textContent = scene.text;
+  let last = performance.now(), lastS = '';
+  function frame(t) { const dt = Math.min((t - last) / 1000, .05); last = t;
+    if (playing) { if (hold > 0) { hold -= dt; if (hold <= 0) dir *= -1; } else { u += dir * dt / +$('spd').value; if (u >= 1) { u = 1; hold = .6; } if (u <= 0) { u = 0; hold = .6; } } $('pos').value = u; su = (su + dt / 5) % 1; }
+    const fr = type.frame(u, dir); fr.dir = dir; if (mode === '2d') v2.update(fr); else v3.update(fr);
+    if (fr.status !== lastS) { $('status').textContent = fr.status; lastS = fr.status; }
+    $('scene').innerHTML = `<g transform="scale(1,-1)">${scene.draw(su)}</g>`; $('sceneAngle').textContent = `Shaft angle: ${HM.fmt(scene.angle(su), 0)}°`;
+    requestAnimationFrame(frame); }
+  select(location.hash.slice(1)); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

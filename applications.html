@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hydraulic motor applications: worked examples</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚜</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=STIX+Two+Text:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="wrap" id="app">
+<header class="top">
+  <div><h1>Applications in agriculture and industry</h1><p class="sub">Worked examples you can edit. Cards marked “Published data” use figures from the linked manufacturer or patent pages; “Design exercise” cards use assumed but realistic values.</p></div>
+  <div class="seg" role="group" aria-label="Units"><button data-units="si" aria-pressed="true">SI (metric)</button><button data-units="us" aria-pressed="false">US customary</button></div>
+</header>
+<div class="filters seg" role="group" aria-label="Filter" style="width:max-content"><button data-f="all" aria-pressed="true">All</button><button data-f="ag" aria-pressed="false">Agriculture</button><button data-f="ind" aria-pressed="false">Industry</button></div>
+<div id="cards"></div>
+<footer>Calculations are ideal unless efficiencies are given. Always confirm with the manufacturer’s data before selecting a motor.</footer>
+</div>
+<script src="js/nav.js"></script>
+<script src="js/common.js"></script>
+<script src="js/apps.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), H = HM.H, st = {};
+  const box = $('cards');
+  box.innerHTML = APPS.map(a => `<section class="appcard" data-sector="${a.sector}" id="${a.id}">
+    <h3>${a.title}</h3><p style="margin:0 0 6px"><span class="tag ${a.sector}">${a.sector === 'ag' ? 'Agriculture' : 'Industry'}</span><span class="tag ${a.kind}">${a.kind === 'real' ? 'Published data' : 'Design exercise'}</span><span class="pill">${a.motor}</span></p>
+    <p>${a.intro}</p>${a.src ? `<p class="src">Sources: ${a.src.map(([t, u]) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join('; ')}</p>` : ''}
+    <div class="calcgrid" data-in="${a.id}"></div>
+    <div class="tablewrap"><table class="calc"><thead><tr><th>Step</th><th>Formula</th><th>Substitution (consistent units)</th><th>Result</th></tr></thead><tbody data-out="${a.id}"></tbody></table></div>
+    <p class="note" data-teach="${a.id}" style="font-size:.95rem;color:var(--ink)"></p></section>`).join('');
+  APPS.forEach(a => { st[a.id] = {}; const g = box.querySelector(`[data-in="${a.id}"]`);
+    a.inputs.forEach(([id, label, kind, def]) => { st[a.id][id] = { kind, si: def }; const l = document.createElement('label');
+      l.innerHTML = `${label}<span class="in"><input type="number" step="any" data-a="${a.id}" data-k="${id}"><span class="u"></span></span>`; g.appendChild(l);
+      l.querySelector('input').addEventListener('change', e => { const x = parseFloat(e.target.value); if (isFinite(x)) st[a.id][id].si = x / H.EVERY[H.units][kind][1]; calc(a); }); }); });
+  function sync() { box.querySelectorAll('input[data-a]').forEach(i => { const o = st[i.dataset.a][i.dataset.k], E = H.EVERY[H.units][o.kind]; i.value = +(o.si * E[1]).toFixed(Math.max(E[2], 2)); i.nextElementSibling.textContent = E[0]; }); }
+  function calc(a) { const v = {}; for (const k in st[a.id]) v[k] = st[a.id][k].si; const r = a.compute(v, H);
+    box.querySelector(`[data-out="${a.id}"]`).innerHTML = r.rows.map(x => `<tr><td>${x.label}</td><td class="eq">${x.eq}</td><td class="sub">${x.sub}</td><td class="res">${x.res}</td></tr>`).join('');
+    box.querySelector(`[data-teach="${a.id}"]`).innerHTML = '<b>Teaching point.</b> ' + r.teach; }
+  document.querySelectorAll('[data-units]').forEach(b => b.addEventListener('click', () => { H.units = b.dataset.units; document.querySelectorAll('[data-units]').forEach(x => x.setAttribute('aria-pressed', x === b)); sync(); APPS.forEach(calc); }));
+  document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    box.querySelectorAll('.appcard').forEach(c => c.hidden = !(b.dataset.f === 'all' || c.dataset.sector === b.dataset.f)); }));
+  sync(); APPS.forEach(calc);
+})();
+</script>
+</body>
+</html>

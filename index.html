@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hydraulic motors: animated cross-sections</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=STIX+Two+Text:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="wrap" id="app">
+<header class="top">
+  <div><h1>Hydraulic motors</h1><p class="sub">Pick a motor type and watch it turn in a cross-section or a 3D cutaway. Flow decides speed; load decides pressure.</p></div>
+  <div class="seg" role="group" aria-label="Units"><button data-units="si" aria-pressed="true">SI (metric)</button><button data-units="us" aria-pressed="false">US customary</button></div>
+</header>
+<div class="layout">
+  <nav class="types" aria-label="Motor types" id="typeNav"></nav>
+  <main>
+    <div class="card">
+      <div class="figtop"><h2 id="typeName"></h2>
+        <div class="seg" role="group" aria-label="View"><button data-mode="2d" aria-pressed="true">Section view</button><button data-mode="3d" aria-pressed="false">Perspective view</button></div></div>
+      <svg class="sec" id="sec" role="img" aria-label="Animated cross-section of the selected motor"></svg>
+      <div class="viewer" id="v3d" hidden>
+        <div class="views3" role="group" aria-label="Camera"><button data-v3="persp" aria-pressed="true">Perspective</button><button data-v3="front" aria-pressed="false">Front</button><button data-v3="side" aria-pressed="false">Side</button><button data-v3="top" aria-pressed="false">Top</button></div>
+        <div class="hint3">Drag to rotate, scroll or pinch to zoom</div>
+      </div>
+      <div class="legend" aria-hidden="true"><span><i style="background:var(--hp)"></i>Pressure oil</span><span><i style="background:var(--lp)"></i>Return oil</span><span><i style="background:var(--accent)"></i>Vanes, keys, swashplate</span></div>
+      <div class="toolbar">
+        <button class="btn" id="play" aria-pressed="true">Pause</button>
+        <button class="btn" id="rev">Reverse</button>
+        <label>Animation speed <input type="range" id="spd" min="0.2" max="3" step="0.05" value="1" aria-label="Animation speed"></label>
+        <label><input type="checkbox" id="labels" checked> Labels</label>
+        <label id="cutWrap"><input type="checkbox" id="cut" checked> Cutaway (3D)</label>
+        <span id="extra" style="display:contents"></span>
+      </div>
+      <p class="status" id="status" aria-live="polite"></p>
+    </div>
+    <div class="below">
+      <div class="card"><h3>How it works</h3><p id="summary"></p><ol id="steps"></ol><h4>Used for</h4><p id="uses"></p><h4>Watch for</h4><p id="watch"></p></div>
+      <div class="card"><h3>Schematic symbol</h3><div class="symbol"><svg id="symbol" viewBox="0 0 100 100" aria-hidden="true" style="width:120px;height:120px"></svg></div><p class="note" id="symNote"></p></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Calculator</h3>
+      <div class="calcgrid" id="calcIn"></div>
+      <div class="tablewrap"><table class="calc"><thead><tr><th>Quantity</th><th>Formula</th><th>Substitution (consistent units)</th><th>Result</th></tr></thead><tbody id="calcOut"></tbody></table></div>
+      <p class="note" id="calcNote"></p>
+    </div>
+    <footer>Drawings are simplified and not to scale. Clearances and seals are exaggerated so they can be seen. Ideal formulas; real motors lose some flow to leakage (η<sub>v</sub>) and some torque to friction (η<sub>m</sub>).</footer>
+  </main>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/common.js"></script>
+<script src="js/planar.js"></script>
+<script src="js/motors.js"></script>
+<script src="js/explorer.js"></script>
+</body>
+</html>
