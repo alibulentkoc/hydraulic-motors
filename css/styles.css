@@ -168,3 +168,8 @@ svg.sec{max-height:66vh}
 .ftable th,.ftable td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 .ftable th{color:var(--muted);font-weight:600}
 .ftable td.eq{font-family:var(--math);font-style:italic;font-size:1.08rem;white-space:nowrap}
+
+/* hydraulic symbols: filled (black) triangles */
+.typebtn svg .fill{fill:currentColor;stroke:none}
+.symbol svg .fill{fill:var(--ink);stroke:none}
+.symgrid svg .fill{fill:var(--ink);stroke:none}

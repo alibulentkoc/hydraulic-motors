@@ -85,6 +85,7 @@ window.PE = (function () {
       const root = this.root = new THREE.Group(); this.scene.add(root);
       const D = m.depth !== undefined ? m.depth : 8; this.D = D;
       this.meshes = {};
+      this.custom = null;
       if (m.custom3D) { this.custom = m.custom3D(THREE, this.M, root); }
       else {
         m.parts.forEach(p => { if (p.cover && cutaway) return; const z = p.z || [0, D];

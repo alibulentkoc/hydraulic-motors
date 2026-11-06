@@ -396,7 +396,7 @@ window.MOTORS = (function () {
         for (let k = 0; k < Z; k++) parts.push({ id: 'c' + k, cls: 'housing', pts: rot(U, ang(k)) });
         parts.push({ id: 'ecc', cls: 'rotor', pts: circ(E, 0, Re, 64), holes: [circ(0, 0, 1.2, 20)], z: [.3, 7.7] }, { id: 'sh', cls: 'shaft', pts: circ(0, 0, 1.2, 20), z: [-2, 11] }, { id: 'key', cls: 'key', pts: rect(-.25, .7, .25, 1.3), z: [-2, 11] });
         for (let k = 0; k < Z; k++) parts.push({ id: 'p' + k, cls: 'piston', pts: rect(0, -1.3, PLn, 1.3), z: [1, 7] });
-        return { vb: [-20, -17, 40, 34], depth: 8, parts,
+        return { vb: [-20, -17, 40, 34], depth: 8, backPlate: circ(0, 0, 13.5, 72), parts,
           labels: [{ text: 'Eccentric (crank) on the shaft', at: [0, -2.5], tx: -12, ty: -15.5 }, { text: 'Piston', at: [0, 8], tx: 9, ty: 15.5 },
             { text: 'Cylinder', at: [-2.1, 12], tx: -9, ty: 15.5 }, { text: 'Pressure pushes pistons inward', at: [10.5, -8], tx: 12, ty: -15.5 }] };
       },
