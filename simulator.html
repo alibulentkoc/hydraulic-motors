@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hydraulic motor and vane actuator simulator</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎛️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=STIX+Two+Text:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+.simgrid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:940px){.simgrid{grid-template-columns:minmax(0,1fr)}}
+.ctl{margin:10px 0}
+.ctl .top{display:flex;justify-content:space-between;gap:8px;font-size:.92rem;align-items:center}
+.ctl input[type=range]{width:100%}
+.num{width:90px;font:600 1rem var(--cond);padding:2px 6px;border:1px solid var(--steel-dark);border-radius:3px;background:var(--bg);color:var(--ink);text-align:right}
+.u{font-size:.82rem;color:var(--muted);margin-left:4px}
+.ctl.off{display:none}
+.views{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}
+@media (max-width:700px){.views{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--scene);border-radius:6px;padding:6px}
+.panel svg{display:block;width:100%;height:auto}
+.panel h4{margin:2px 6px 0;font-size:.85rem;color:var(--muted);font-weight:600}
+.gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:12px}
+.gauges svg{width:100%;height:auto;display:block;background:var(--scene);border-radius:6px}
+.gtxt{font:600 11px var(--cond);fill:var(--ink)} .gnum{font:600 9px var(--cond);fill:var(--muted)} .gval{font:600 15px var(--cond);fill:var(--ink)}
+.sank{margin-top:12px}
+.bar{display:flex;height:34px;border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.bar div{display:flex;align-items:center;justify-content:center;color:#fff;font:600 .85rem var(--sans);white-space:nowrap;overflow:hidden;transition:flex-basis .25s}
+.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;color:var(--muted);margin-top:4px}
+.leg i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+svg text.t{font:600 12px var(--cond);fill:var(--ink)} svg text.tm{font:italic 15px var(--math);fill:var(--ink)}
+.status.bad{border-color:var(--hp)} .status.ok{border-color:var(--stat)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+<header class="top">
+  <div><h1>Simulator</h1><p class="sub">Change any value and watch the machine, the gauges and the power flow respond. Based on the class notes on vane torque, motor flow, torque, power and efficiency.</p></div>
+  <div class="seg" role="group" aria-label="Units"><button data-units="us" aria-pressed="true">US customary</button><button data-units="si" aria-pressed="false">SI (metric)</button></div>
+</header>
+<div class="seg" role="group" aria-label="Simulator" style="width:max-content;margin-bottom:14px"><button data-tab="vane" aria-pressed="true">Vane actuator (notes 1 and 2)</button><button data-tab="motor" aria-pressed="false">Motor performance (notes 3 to 6)</button></div>
+
+<!-- ===================== VANE ===================== -->
+<section id="tab-vane">
+<div class="simgrid">
+  <aside class="card">
+    <h3>Inputs</h3>
+    <div class="presets"><button class="btn" data-vp="ex2">Notes example 2</button><button class="btn" data-vp="big">Larger vane</button><button class="btn" data-vp="weak">Too little pressure</button></div>
+    <div class="seg" role="group" aria-label="Mode" style="margin:8px 0"><button data-vm="load" aria-pressed="true">Load sets Δp</button><button data-vm="dp" aria-pressed="false">I set Δp</button></div>
+    <div id="vaneIn"></div>
+    <p class="note">Δp is the pressure difference across the vane: inlet minus return.</p>
+  </aside>
+  <div>
+    <div class="card">
+      <div class="views">
+        <div class="panel"><h4>End view: vane swings through θ</h4><svg id="vEnd" viewBox="-170 -170 340 340" role="img" aria-label="End view of the vane actuator"></svg></div>
+        <div class="panel"><h4>The vane face: pressure × area = force</h4><svg id="vFace" viewBox="0 0 300 290" role="img" aria-label="Vane face with pressure and force"></svg></div>
+      </div>
+      <div class="gauges" id="vGauges"></div>
+      <p class="status" id="vStatus" aria-live="polite"></p>
+    </div>
+    <div class="card" style="margin-top:14px"><h3>Working it out</h3><div class="tablewrap"><table class="calc"><thead><tr><th>Step</th><th>Formula</th><th>Substitution</th><th>Result</th></tr></thead><tbody id="vOut"></tbody></table></div>
+      <p class="note">T = Δp·V<sub>D</sub>/2π uses the full-revolution equivalent displacement. The oil actually used for a swing of θ is V(θ) = (θL/2)(R<sub>v</sub>² − R<sub>r</sub>²).</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ===================== MOTOR ===================== -->
+<section id="tab-motor" hidden>
+<div class="simgrid">
+  <aside class="card">
+    <h3>Inputs</h3>
+    <div class="presets"><button class="btn" data-mp="ex4">Notes example 4</button><button class="btn" data-mp="ex6">Notes example 6</button><button class="btn" data-mp="worn">Worn motor</button></div>
+    <div class="seg" role="group" aria-label="Mode" style="margin:8px 0"><button data-mm="design" aria-pressed="true">Predict (efficiencies known)</button><button data-mm="test" aria-pressed="false">Test data (find efficiencies)</button></div>
+    <div id="motorIn"></div>
+  </aside>
+  <div>
+    <div class="card">
+      <div class="views">
+        <div class="panel"><h4 id="mViewTitle">Gear motor, turning at the calculated speed</h4><svg id="mSec" class="sec" role="img" aria-label="Animated gear motor"></svg></div>
+        <div class="panel"><h4>Power flow</h4>
+          <div class="sank" style="padding:6px">
+            <div class="bar" id="pbar"></div>
+            <div class="leg"><span><i style="background:var(--stat)"></i>Shaft power out</span><span><i style="background:var(--dyn)"></i>Lost to friction (η<sub>m</sub>)</span><span><i style="background:var(--lp)"></i>Lost to leakage (η<sub>v</sub>)</span></div>
+            <p id="pText" style="margin:10px 0 0;font-size:.95rem"></p>
+          </div>
+          <div style="padding:6px"><div class="bar" id="qbar"></div><div class="leg"><span><i style="background:var(--hp)"></i>Flow that turns the shaft (Q<sub>T</sub>)</span><span><i style="background:var(--air)"></i>Leakage flow</span></div></div>
+        </div>
+      </div>
+      <div class="gauges" id="mGauges"></div>
+      <p class="status" id="mStatus" aria-live="polite"></p>
+    </div>
+    <div class="card" style="margin-top:14px"><h3>Working it out</h3><div class="tablewrap"><table class="calc"><thead><tr><th>Step</th><th>Formula</th><th>Substitution</th><th>Result</th></tr></thead><tbody id="mOut"></tbody></table></div>
+      <p class="note">η<sub>v</sub> = Q<sub>T</sub>/Q<sub>a</sub>, η<sub>m</sub> = T<sub>a</sub>/T<sub>T</sub>, η<sub>o</sub> = η<sub>v</sub>·η<sub>m</sub> = shaft power / hydraulic power. Dividing shaft power by Δp·V<sub>D</sub>·N gives η<sub>m</sub>, not η<sub>o</sub>.</p></div>
+  </div>
+</div>
+</section>
+<footer>Ideal relationships from the notes, with losses added through η<sub>v</sub> and η<sub>m</sub>. Drawings are not to scale.</footer>
+</div>
+<script src="js/nav.js"></script>
+<script src="js/common.js"></script>
+<script src="js/planar.js"></script>
+<script src="js/motors.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), H = HM.H, PI = Math.PI, TAU = 2 * PI, fmt = HM.fmt;
+  H.units = 'us';
+  const IN = 0.0254, PSI = 6894.757, LBIN = 0.112985, GPM = 3.785411784e-3 / 60, IN3 = 1.6387064e-5;
+  /* extra unit kinds for this page */
+  H.EVERY.us.Tin = ['lbf·in', 1 / LBIN, 0]; H.EVERY.si.Tin = ['N·m', 1, 1];
+  H.EVERY.us.pg = ['psig', 1 / PSI, 0]; H.EVERY.si.pg = ['bar g', 1e-5, 1];
+  H.EVERY.us.vol3 = ['in³', 1 / IN3, 3]; H.EVERY.si.vol3 = ['cm³', 1e6, 1];
+  /* ---------- generic slider+box control ---------- */
+  function controls(box, defs, onChange) {
+    const st = {}; box.innerHTML = '';
+    defs.forEach(d => { st[d.id] = { kind: d.kind, si: d.def, min: d.min, max: d.max };
+      const w = document.createElement('div'); w.className = 'ctl'; w.id = 'c-' + d.id;
+      w.innerHTML = `<div class="top"><label for="r-${d.id}">${d.label}</label><span><input class="num" type="number" step="any" id="n-${d.id}"><span class="u" id="u-${d.id}"></span></span></div><input type="range" id="r-${d.id}" min="${d.min}" max="${d.max}" step="any">`;
+      box.appendChild(w);
+      w.querySelector('input[type=range]').addEventListener('input', e => { st[d.id].si = +e.target.value; sync(d.id); onChange(); });
+      w.querySelector('.num').addEventListener('change', e => { const x = parseFloat(e.target.value); if (isFinite(x)) { st[d.id].si = Math.min(d.max, Math.max(d.min, x / H.EVERY[H.units][d.kind][1])); } sync(d.id); onChange(); }); });
+    const sync = id => { (id ? [id] : Object.keys(st)).forEach(k => { const o = st[k], E = H.EVERY[H.units][o.kind]; $('r-' + k).value = o.si; if (document.activeElement !== $('n-' + k)) $('n-' + k).value = +(o.si * E[1]).toFixed(Math.max(E[2], 1)); $('u-' + k).textContent = E[0]; }); };
+    sync(); return { st, sync, v: () => { const v = {}; for (const k in st) v[k] = st[k].si; return v; }, set: o => { for (const k in o) st[k].si = o[k]; sync(); } };
+  }
+  /* ---------- gauge ---------- */
+  function gauge(el, label, value, max, valText, color) {
+    const a0 = -225, sweep = 270, f = Math.max(0, Math.min(1, value / max)), ang = (a0 + sweep * f) * PI / 180, R = 44, cx = 60, cy = 58;
+    const pt = (a, r) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    let ticks = ''; for (let i = 0; i <= 10; i++) { const a = (a0 + sweep * i / 10) * PI / 180, [x1, y1] = pt(a, R - (i % 5 ? 4 : 8)), [x2, y2] = pt(a, R); ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:var(--ink);stroke-width:1.2"/>`; }
+    const [ex, ey] = pt(ang, R - 10), [sx, sy] = pt(a0 * PI / 180, R + 3), [fx, fy] = pt(ang, R + 3), large = sweep * f > 180 ? 1 : 0;
+    el.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R + 6}" style="fill:var(--panel);stroke:var(--steel-dark);stroke-width:2"/>
+      <path d="M${sx},${sy} A${R + 3},${R + 3} 0 ${large} 1 ${fx},${fy}" style="fill:none;stroke:${color};stroke-width:4"/>${ticks}
+      <line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" style="stroke:${value > max ? 'var(--hp)' : 'var(--ink)'};stroke-width:2.5;stroke-linecap:round"/><circle cx="${cx}" cy="${cy}" r="3.5" style="fill:var(--ink)"/>
+      <text x="${cx}" y="${cy + 26}" text-anchor="middle" class="gval">${valText}</text><text x="${cx}" y="128" text-anchor="middle" class="gtxt">${label}</text>`;
+  }
+  const mkGauges = (box, n) => { box.innerHTML = Array.from({ length: n }, () => '<svg viewBox="0 0 120 136"></svg>').join(''); return [...box.children]; };
+  const niceMax = x => { const e = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1e-9)))), m = x / e; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * e; };
+  const show = (x, k) => H.e(x, k);
+
+  /* =================== VANE ACTUATOR =================== */
+  let vMode = 'load';
+  const V = controls($('vaneIn'), [
+    { id: 'Rv', label: 'Vane outer radius R<sub>v</sub>', kind: 'len', def: 1.5 * IN, min: .6 * IN, max: 4 * IN },
+    { id: 'Rr', label: 'Rotor radius R<sub>r</sub>', kind: 'len', def: .5 * IN, min: .2 * IN, max: 2.5 * IN },
+    { id: 'L', label: 'Vane width L', kind: 'len', def: 1 * IN, min: .25 * IN, max: 4 * IN },
+    { id: 'T', label: 'Load torque T', kind: 'Tin', def: 1000 * LBIN, min: 0, max: 20000 * LBIN },
+    { id: 'dp', label: 'Pressure difference Δp (you set)', kind: 'p', def: 1000 * PSI, min: 0, max: 5000 * PSI },
+    { id: 'pr', label: 'Return pressure', kind: 'pg', def: 100 * PSI, min: 0, max: 1000 * PSI },
+    { id: 'th', label: 'Swing angle θ', kind: 'deg', def: 180, min: 20, max: 300 },
+    { id: 'Q', label: 'Flow Q', kind: 'Q', def: .5 * GPM, min: .05 * GPM, max: 10 * GPM }], vaneCalc);
+  const vg = mkGauges($('vGauges'), 4);
+  let vs = {}, vphi = 0, vdir = 1, vhold = 0;
+  function vaneCalc() {
+    const v = V.v(); if (v.Rr > v.Rv - .1 * IN) { v.Rr = v.Rv - .1 * IN; V.set({ Rr: v.Rr }); }
+    $('c-dp').classList.toggle('off', vMode === 'load');
+    const A = (v.Rv - v.Rr) * v.L, r = (v.Rv + v.Rr) / 2, K = v.L / 2 * (v.Rv ** 2 - v.Rr ** 2), VD = PI * (v.Rv ** 2 - v.Rr ** 2) * v.L;
+    const dp = vMode === 'load' ? v.T / K : v.dp, F = dp * A, Tm = F * r, th = v.th * PI / 180, Vth = th * K, omega = v.Q / K, tStroke = Vth / v.Q;
+    const stall = vMode === 'dp' && Tm < v.T * 0.999, surplus = vMode === 'dp' && Tm > v.T * 1.001;
+    vs = { ...v, A, r, K, VD, dp, F, Tm, th, Vth, omega, tStroke, stall, surplus, pin: dp + v.pr };
+    const Hr = (x, k) => H.r(x, k);
+    const rows = [
+      ['Vane area', 'A = (R<sub>v</sub> − R<sub>r</sub>)·L', `(${H.n(v.Rv, 'len')} − ${H.n(v.Rr, 'len')}) × ${H.n(v.L, 'len')}`, Hr(A, 'area')],
+      ['Average radius', 'r = (R<sub>v</sub> + R<sub>r</sub>) / 2', `(${H.n(v.Rv, 'len')} + ${H.n(v.Rr, 'len')}) / 2`, Hr(r, 'len')],
+      ['Equivalent displacement', 'V<sub>D</sub> = π·(R<sub>v</sub>² − R<sub>r</sub>²)·L', `π × (${H.n(v.Rv, 'len')}² − ${H.n(v.Rr, 'len')}²) × ${H.n(v.L, 'len')}`, `${H.c(VD, 'vol')} = <b>${show(VD, 'vol3')}</b> per equivalent rev`]];
+    if (vMode === 'load') rows.push(['Pressure difference needed', 'Δp = 2π·T / V<sub>D</sub>', `2π × ${H.n(v.T, 'T')} / ${H.n(VD, 'vol')}`, Hr(dp, 'p')]);
+    else rows.push(['Torque this Δp makes', 'T = Δp·V<sub>D</sub> / 2π', `${H.n(dp, 'p')} × ${H.n(VD, 'vol')} / 2π`, `${Hr(Tm, 'T')} vs load ${show(v.T, 'Tin')}`]);
+    rows.push(['Force on the vane', 'F = Δp·A', `${H.n(dp, 'p')} × ${H.n(A, 'area')}`, Hr(F, 'F')],
+      ['Check: torque', 'T = F·r', `${H.n(F, 'F')} × ${H.n(r, 'len')}`, Hr(Tm, 'T')],
+      ['Inlet gauge pressure', 'p<sub>in</sub> = Δp + p<sub>return</sub>', `${show(dp, 'p')} + ${show(v.pr, 'pg')}`, `<b>${show(dp + v.pr, 'pg')}</b>`],
+      ['Oil used for the swing', 'V(θ) = (θL/2)·(R<sub>v</sub>² − R<sub>r</sub>²)', `${fmt(th, 3)} rad × ${H.n(K, 'vol')}`, `<b>${show(Vth, 'vol3')}</b>`],
+      ['Swing speed', 'ω = Q / [(L/2)(R<sub>v</sub>² − R<sub>r</sub>²)]', `${H.n(v.Q, 'Q')} / ${H.n(K, 'vol')}`, `<b>${fmt(omega, 2)} rad/s = ${fmt(omega * 180 / PI, 0)}°/s</b>`],
+      ['Time for one swing', 't = V(θ) / Q', `${H.n(Vth, 'vol')} / ${H.n(v.Q, 'Q')}`, `<b>${stall ? 'does not move' : fmt(tStroke, 2) + ' s'}</b>`]);
+    $('vOut').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td class="eq">${r[1]}</td><td class="sub">${r[2]}</td><td class="res">${r[3]}</td></tr>`).join('');
+    const st = $('vStatus'); st.className = 'status ' + (stall ? 'bad' : 'ok');
+    st.innerHTML = stall ? `Stalled: ${show(dp, 'p')} makes only ${show(Tm, 'Tin')}, less than the ${show(v.T, 'Tin')} load. Raise Δp, or make the vane bigger (R<sub>v</sub> or L).`
+      : vMode === 'load' ? `The load needs Δp = <b>${show(dp, 'p')}</b> (inlet gauge ${show(dp + v.pr, 'pg')}). The flow sets the swing time: ${fmt(tStroke, 2)} s for ${fmt(v.th, 0)}°. Real actuators need extra pressure to cover friction and to accelerate the load.`
+      : `Δp = ${show(dp, 'p')} makes ${show(Tm, 'Tin')}, ${surplus ? 'more than' : 'equal to'} the ${show(v.T, 'Tin')} load, so the vane swings. ${surplus ? 'In a real circuit the pressure would fall to what the load needs.' : ''}`;
+  }
+  function vaneDraw(dt) {
+    const s = vs, S = 150 / (4 * IN), Rv = s.Rv * S, Rr = s.Rr * S, wall = 9, stopHalf = 12 * PI / 180;
+    // swing (real time, slowed if very fast)
+    const slow = s.tStroke < .6 ? s.tStroke / .6 : 1;
+    if (!s.stall) { if (vhold > 0) { vhold -= dt; if (vhold <= 0) vdir *= -1; } else { vphi += vdir * s.omega * slow * dt; if (vphi >= s.th) { vphi = s.th; vhold = .5; } if (vphi <= 0) { vphi = 0; vhold = .5; } } }
+    vphi = Math.min(vphi, s.th);
+    const base = PI / 2 + stopHalf + .05, a = base + vphi; // screen angles, y down: start just right... use math then flip
+    const P = (ang, r) => [r * Math.cos(ang), -r * Math.sin(ang)];
+    const sector = (r0, r1, a1, a2) => { const [x1, y1] = P(a1, r1), [x2, y2] = P(a2, r1), [x3, y3] = P(a2, r0), [x4, y4] = P(a1, r0), lg = (a2 - a1) > PI ? 1 : 0;
+      return `M${x1},${y1} A${r1},${r1} 0 ${lg} 0 ${x2},${y2} L${x3},${y3} A${r0},${r0} 0 ${lg} 1 ${x4},${y4} Z`; };
+    const stopA = -PI / 2; // stop at the bottom
+    const s0 = stopA + stopHalf, aV = s0 + .04 + vphi, sEnd = stopA - stopHalf + TAU;
+    const vane = (() => { const w = .07; const [x1, y1] = P(aV - w * 22 / Rv, Rr), [x2, y2] = P(aV - w * 22 / Rv, Rv - 1), [x3, y3] = P(aV + w * 22 / Rv, Rv - 1), [x4, y4] = P(aV + w * 22 / Rv, Rr); return `M${x1},${y1}L${x2},${y2}L${x3},${y3}L${x4},${y4}Z`; })();
+    const mid = aV, [fx, fy] = P(mid - .25, (Rv + Rr) / 2), [fx2, fy2] = P(mid - .06, (Rv + Rr) / 2);
+    const Tw = Math.min(10, 1.5 + s.Tm / (2000 * LBIN) * 3);
+    const arcR = Rv + wall + 10, [ax1, ay1] = P(aV - .6, arcR), [ax2, ay2] = P(aV + .05, arcR);
+    $('vEnd').innerHTML = `
+      <circle r="${Rv + wall}" style="fill:var(--steel-light);stroke:var(--steel-dark);stroke-width:1.5"/><circle r="${Rv}" style="fill:var(--lp);opacity:.35"/>
+      <path d="${sector(Rr, Rv, s0, aV - .04)}" style="fill:var(--hp);opacity:.6"/>
+      <path d="${sector(Rr, Rv + wall, stopA - stopHalf, stopA + stopHalf)}" style="fill:var(--steel-dark)"/>
+      <circle r="${Rr}" style="fill:var(--steel);stroke:var(--steel-dark)"/><circle r="${Math.max(4, Rr * .35)}" style="fill:var(--steel-dark)"/>
+      <path d="${vane}" style="fill:var(--accent);stroke:#6b5300"/>
+      <path d="M${ax1},${ay1} A${arcR},${arcR} 0 0 0 ${ax2},${ay2}" style="fill:none;stroke:var(--ink);stroke-width:${Tw};${s.stall ? 'opacity:.25' : ''}" marker-end="url(#ah)"/>
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink)"/></marker></defs>
+      <text x="0" y="${Rv + wall + 18}" text-anchor="middle" class="t">Stop</text>
+      <text x="-160" y="-150" class="t">θ = ${fmt(vphi * 180 / PI, 0)}° of ${fmt(s.th * 180 / PI, 0)}°</text>
+      <text x="160" y="-150" text-anchor="end" class="t">T = ${show(s.Tm, 'Tin')}</text>
+      ${slow < 1 ? `<text x="0" y="160" text-anchor="middle" class="t" style="fill:var(--muted)">Shown slower than real (real swing ${fmt(s.tStroke, 2)} s)</text>` : ''}`;
+    // vane face seen head-on: area L x (Rv - Rr); pressure pushes into the face (⊗), the resultant F acts at radius r
+    const sc = 220 / (4 * IN), ax = 272, cx = 150, wpx = Math.max(12, s.L * sc), yT = ax - s.Rv * sc, yB = ax - s.Rr * sc, yF = ax - s.r * sc, x0 = cx - wpx / 2;
+    const cr = Math.min(9, 2.5 + s.dp / (1000 * PSI) * 2.5), nx = Math.max(1, Math.floor(wpx / 26)), ny = Math.max(1, Math.floor((yB - yT) / 26));
+    let marks = ''; for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) { const x = x0 + (i + .5) * wpx / nx, y = yT + (j + .5) * (yB - yT) / ny;
+      marks += `<circle cx="${x}" cy="${y}" r="${cr}" style="fill:none;stroke:var(--hp);stroke-width:1.4"/><path d="M${x - cr * .7},${y - cr * .7}L${x + cr * .7},${y + cr * .7}M${x + cr * .7},${y - cr * .7}L${x - cr * .7},${y + cr * .7}" style="stroke:var(--hp);stroke-width:1.4"/>`; }
+    const FR = Math.min(16, 5 + s.F / (1000 * 4.448) * 3);
+    const dim = (x, y, t) => `<line x1="${x}" y1="${ax}" x2="${x}" y2="${y}" style="stroke:var(--muted);stroke-width:1"/><line x1="${x - 4}" y1="${y}" x2="${x + 4}" y2="${y}" style="stroke:var(--muted)"/><text x="${x - 4}" y="${(ax + y) / 2 + 4}" text-anchor="end" class="tm">${t}</text>`;
+    $('vFace').innerHTML = `<rect x="${x0 - 12}" y="${yB}" width="${wpx + 24}" height="${ax - yB + 10}" style="fill:var(--steel);stroke:var(--steel-dark)"/>
+      <line x1="${x0 - 40}" y1="${ax}" x2="${x0 + wpx + 30}" y2="${ax}" style="stroke:var(--ink);stroke-dasharray:6 3 1 3"/><text x="${x0 + wpx + 30}" y="${ax - 4}" text-anchor="end" class="t" style="fill:var(--muted)">shaft axis</text>
+      <rect x="${x0}" y="${yT}" width="${wpx}" height="${yB - yT}" style="fill:var(--accent);stroke:#6b5300"/>${marks}
+      <circle cx="${cx}" cy="${yF}" r="${FR}" style="fill:var(--panel);stroke:var(--ink);stroke-width:2.5"/><path d="M${cx - FR * .7},${yF - FR * .7}L${cx + FR * .7},${yF + FR * .7}M${cx + FR * .7},${yF - FR * .7}L${cx - FR * .7},${yF + FR * .7}" style="stroke:var(--ink);stroke-width:2.5"/>
+      <text x="${cx + FR + 5}" y="${yF + 5}" class="tm">F</text>
+      ${dim(x0 - 16, yB, 'R<tspan baseline-shift="sub" font-size="10">r</tspan>')}${dim(x0 - 44, yF, 'r')}${dim(x0 - 72, yT, 'R<tspan baseline-shift="sub" font-size="10">v</tspan>')}
+      <line x1="${x0}" y1="${yT - 10}" x2="${x0 + wpx}" y2="${yT - 10}" style="stroke:var(--muted)"/><text x="${cx}" y="${yT - 15}" text-anchor="middle" class="tm">L</text>
+      <text x="8" y="20" class="t">Δp = ${show(s.dp, 'p')}</text><text x="8" y="37" class="t">A = ${show(s.A, 'area')}</text><text x="8" y="54" class="t">F = Δp·A = ${show(s.F, 'F')}</text>
+      <text x="292" y="20" text-anchor="end" class="t" style="fill:var(--hp)">⊗ pressure pushes into the vane</text>`;
+    const pmax = niceMax(Math.max(s.pin, 1200 * PSI) * 1.1);
+    gauge(vg[0], 'Inlet pressure', s.pin, pmax, show(s.pin, 'pg'), 'var(--hp)');
+    gauge(vg[1], 'Return pressure', s.pr, pmax, show(s.pr, 'pg'), 'var(--lp)');
+    gauge(vg[2], 'Torque', s.Tm, niceMax(Math.max(s.Tm, s.T) * 1.2), show(s.Tm, 'Tin'), 'var(--ink)');
+    gauge(vg[3], 'Swing speed', s.stall ? 0 : s.omega * 180 / PI, niceMax(Math.max(s.omega * 180 / PI, 10) * 1.2), s.stall ? '0 °/s' : fmt(s.omega * 180 / PI, 0) + ' °/s', 'var(--stat)');
+  }
+  document.querySelectorAll('[data-vm]').forEach(b => b.addEventListener('click', () => { vMode = b.dataset.vm; document.querySelectorAll('[data-vm]').forEach(x => x.setAttribute('aria-pressed', x === b)); vaneCalc(); }));
+  const VP = { ex2: { Rv: 1.5 * IN, Rr: .5 * IN, L: IN, T: 1000 * LBIN, pr: 100 * PSI, dp: 1000 * PSI }, big: { Rv: 3 * IN, Rr: 1 * IN, L: 2 * IN, T: 5000 * LBIN }, weak: { dp: 600 * PSI, T: 1000 * LBIN, Rv: 1.5 * IN, Rr: .5 * IN, L: IN } };
+  document.querySelectorAll('[data-vp]').forEach(b => b.addEventListener('click', () => { V.set(VP[b.dataset.vp]); if (b.dataset.vp === 'weak') { vMode = 'dp'; document.querySelectorAll('[data-vm]').forEach(x => x.setAttribute('aria-pressed', x.dataset.vm === 'dp')); } vaneCalc(); }));
+
+  /* =================== MOTOR =================== */
+  let mMode = 'design';
+  const M = controls($('motorIn'), [
+    { id: 'VD', label: 'Displacement V<sub>D</sub>', kind: 'vol', def: 5 * IN3, min: .5 * IN3, max: 30 * IN3 },
+    { id: 'dp', label: 'Pressure difference Δp', kind: 'p', def: 1000 * PSI, min: 50 * PSI, max: 5000 * PSI },
+    { id: 'Qa', label: 'Actual inlet flow Q<sub>a</sub>', kind: 'Q', def: 10 * GPM, min: .5 * GPM, max: 150 * GPM },
+    { id: 'ev', label: 'Volumetric efficiency η<sub>v</sub>', kind: 'eff', def: 1, min: .5, max: 1 },
+    { id: 'em', label: 'Mechanical efficiency η<sub>m</sub>', kind: 'eff', def: 1, min: .5, max: 1 },
+    { id: 'N', label: 'Measured speed N', kind: 'rpm', def: 2000, min: 10, max: 4000 },
+    { id: 'Ta', label: 'Measured torque T<sub>a</sub>', kind: 'Tin', def: 1500 * LBIN, min: 10 * LBIN, max: 15000 * LBIN }], motorCalc);
+  const mg = mkGauges($('mGauges'), 4);
+  const v2 = new PE.View2D($('mSec')), gearT = MOTORS.list.find(t => t.id === 'external-gear'); v2.build(gearT.build({}));
+  let ms = {}, mth = 0;
+  function motorCalc() {
+    const v = M.v(), test = mMode === 'test';
+    ['ev', 'em'].forEach(k => $('c-' + k).classList.toggle('off', test)); ['N', 'Ta'].forEach(k => $('c-' + k).classList.toggle('off', !test));
+    const nT = v.Qa / v.VD; // rev/s if all flow turned the shaft
+    let N, QT, TT = v.dp * v.VD / TAU, Ta, ev, em, rows = [];
+    if (!test) { ev = v.ev; em = v.em; N = v.Qa * ev / v.VD; QT = v.Qa * ev; Ta = TT * em; }
+    else { N = v.N / 60; QT = v.VD * N; ev = QT / v.Qa; Ta = v.Ta; em = Ta / TT; }
+    const Pin = v.dp * v.Qa, Pout = Ta * TAU * N, Pid = v.dp * v.VD * N, eo = ev * em;
+    const leak = v.dp * (v.Qa - QT), fric = Pid - Pout;
+    ms = { ...v, N, QT, TT, Ta, ev, em, eo, Pin, Pout, Pid, leak, fric };
+    const R = (x, k) => H.r(x, k), us = H.units === 'us';
+    if (!test) rows.push(
+      ['Speed', 'N = Q<sub>a</sub>·η<sub>v</sub> / V<sub>D</sub>', us ? `231 × ${fmt(v.Qa / GPM, 2)} × ${fmt(ev, 3)} / ${fmt(v.VD / IN3, 2)}` : `${H.n(v.Qa, 'Q')} × ${fmt(ev, 3)} / ${H.n(v.VD, 'vol')}`, `<b>${fmt(N * 60, 0)} rpm</b>`],
+      ['Ideal torque', 'T<sub>T</sub> = Δp·V<sub>D</sub> / 2π', `${H.n(v.dp, 'p')} × ${H.n(v.VD, 'vol')} / 2π`, R(TT, 'T')],
+      ['Actual torque', 'T<sub>a</sub> = η<sub>m</sub>·T<sub>T</sub>', `${fmt(em, 3)} × ${show(TT, 'Tin')}`, `<b>${show(Ta, 'Tin')}</b>`]);
+    else rows.push(
+      ['Ideal flow at this speed', 'Q<sub>T</sub> = V<sub>D</sub>·N', us ? `${fmt(v.VD / IN3, 2)} × ${fmt(v.N, 0)} / 231` : `${H.n(v.VD, 'vol')} × ${fmt(N, 3)}`, `<b>${show(QT, 'Q')}</b>`],
+      ['Volumetric efficiency', 'η<sub>v</sub> = Q<sub>T</sub> / Q<sub>a</sub>', `${show(QT, 'Q')} / ${show(v.Qa, 'Q')}`, `<b>${fmt(ev * 100, 1)} %</b>`],
+      ['Ideal torque', 'T<sub>T</sub> = Δp·V<sub>D</sub> / 2π', `${H.n(v.dp, 'p')} × ${H.n(v.VD, 'vol')} / 2π`, R(TT, 'T')],
+      ['Mechanical efficiency', 'η<sub>m</sub> = T<sub>a</sub> / T<sub>T</sub>', `${show(Ta, 'Tin')} / ${show(TT, 'Tin')}`, `<b>${fmt(em * 100, 1)} %</b>`]);
+    rows.push(['Overall efficiency', 'η<sub>o</sub> = η<sub>v</sub>·η<sub>m</sub>', `${fmt(ev, 3)} × ${fmt(em, 3)}`, `<b>${fmt(eo * 100, 1)} %</b>`],
+      ['Hydraulic power in', us ? 'HP = Δp·Q<sub>a</sub> / 1714' : 'P = Δp·Q<sub>a</sub>', us ? `${fmt(v.dp / PSI, 0)} × ${fmt(v.Qa / GPM, 2)} / 1714` : `${H.n(v.dp, 'p')} × ${H.n(v.Qa, 'Q')}`, `<b>${show(Pin, 'P')}</b>`],
+      ['Shaft power out', us ? 'HP = T<sub>a</sub>·N / 63,025' : 'P = T<sub>a</sub>·2πN', us ? `${fmt(Ta / LBIN, 0)} × ${fmt(N * 60, 0)} / 63,025` : `${H.n(Ta, 'T')} × 2π × ${fmt(N, 3)}`, `<b>${show(Pout, 'P')}</b>`],
+      ['Check', 'P<sub>out</sub> / P<sub>in</sub> = η<sub>o</sub>', `${show(Pout, 'P')} / ${show(Pin, 'P')}`, `<b>${fmt(Pout / Pin * 100, 1)} %</b>`],
+      ['Ideal power (not the input!)', 'Δp·V<sub>D</sub>·N', `${show(Pid, 'P')}`, `P<sub>out</sub>/this = <b>${fmt(Pout / Pid * 100, 1)} %</b> = η<sub>m</sub>`]);
+    $('mOut').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td class="eq">${r[1]}</td><td class="sub">${r[2]}</td><td class="res">${r[3]}</td></tr>`).join('');
+    const bad = ev > 1.0001 || em > 1.0001;
+    $('mStatus').className = 'status ' + (bad ? 'bad' : 'ok');
+    $('mStatus').innerHTML = bad ? 'These test values give an efficiency above 100 %, which is impossible: check the measured flow, speed or torque.'
+      : `${fmt(N * 60, 0)} rpm and ${show(Ta, 'Tin')}. Of ${show(Pin, 'P')} going in, ${show(Pout, 'P')} reaches the shaft (${fmt(eo * 100, 1)} %); the other ${show(Pin - Pout, 'P')} becomes heat in the oil.`;
+    const pct = x => Math.max(0, x / Pin * 100);
+    $('pbar').innerHTML = `<div style="flex-basis:${pct(Pout)}%;background:var(--stat)">${fmt(pct(Pout), 0)} %</div><div style="flex-basis:${pct(fric)}%;background:var(--dyn)">${pct(fric) > 7 ? fmt(pct(fric), 0) + ' %' : ''}</div><div style="flex-basis:${pct(leak)}%;background:var(--lp)">${pct(leak) > 7 ? fmt(pct(leak), 0) + ' %' : ''}</div>`;
+    const q = x => Math.max(0, x / v.Qa * 100);
+    $('qbar').innerHTML = `<div style="flex-basis:${q(QT)}%;background:var(--hp)">${show(QT, 'Q')}</div><div style="flex-basis:${q(v.Qa - QT)}%;background:var(--air);color:var(--ink)">${q(v.Qa - QT) > 9 ? show(v.Qa - QT, 'Q') : ''}</div>`;
+    $('pText').innerHTML = `In: <b>${show(Pin, 'P')}</b> → out: <b>${show(Pout, 'P')}</b>. Friction loss ${show(Math.max(0, fric), 'P')}, leakage loss ${show(Math.max(0, leak), 'P')}.`;
+  }
+  function motorDraw(dt) {
+    const s = ms, visRpm = Math.min(120, s.N * 60 / 15); mth += visRpm / 60 * TAU * dt;
+    $('mViewTitle').textContent = `Gear motor at ${fmt(s.N * 60, 0)} rpm (shown ${fmt(s.N * 60 / Math.max(visRpm, .01), 0)}× slower)`;
+    v2.update(gearT.frame(mth, 1, {}));
+    gauge(mg[0], 'Δp across motor', s.dp, niceMax(Math.max(s.dp, 1200 * PSI) * 1.1), show(s.dp, 'p'), 'var(--hp)');
+    gauge(mg[1], 'Flow in', s.Qa, niceMax(s.Qa * 1.2), show(s.Qa, 'Q'), 'var(--lp)');
+    gauge(mg[2], 'Speed', s.N * 60, niceMax(Math.max(s.N * 60, 100) * 1.2), fmt(s.N * 60, 0) + ' rpm', 'var(--stat)');
+    gauge(mg[3], 'Torque', s.Ta, niceMax(Math.max(s.TT, s.Ta) * 1.2), show(s.Ta, 'Tin'), 'var(--ink)');
+  }
+  document.querySelectorAll('[data-mm]').forEach(b => b.addEventListener('click', () => { mMode = b.dataset.mm; document.querySelectorAll('[data-mm]').forEach(x => x.setAttribute('aria-pressed', x === b)); motorCalc(); }));
+  const MP = { ex4: [{ VD: 5 * IN3, Qa: 10 * GPM, dp: 1000 * PSI, ev: 1, em: 1 }, 'design'], ex6: [{ VD: 10 * IN3, dp: 1000 * PSI, N: 2000, Qa: 95 * GPM, Ta: 1500 * LBIN }, 'test'], worn: [{ VD: 5 * IN3, Qa: 10 * GPM, dp: 1000 * PSI, ev: .75, em: .85 }, 'design'] };
+  document.querySelectorAll('[data-mp]').forEach(b => b.addEventListener('click', () => { const [o, mode] = MP[b.dataset.mp]; M.set(o); mMode = mode; document.querySelectorAll('[data-mm]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mm === mode)); motorCalc(); }));
+
+  /* ---------- tabs, units, loop ---------- */
+  let tab = 'vane';
+  document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; document.querySelectorAll('[data-tab]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('tab-vane').hidden = tab !== 'vane'; $('tab-motor').hidden = tab !== 'motor'; }));
+  document.querySelectorAll('[data-units]').forEach(b => b.addEventListener('click', () => { H.units = b.dataset.units; document.querySelectorAll('[data-units]').forEach(x => x.setAttribute('aria-pressed', x === b)); V.sync(); M.sync(); vaneCalc(); motorCalc(); }));
+  vaneCalc(); motorCalc();
+  let last = performance.now();
+  (function loop(t) { const dt = Math.min((t - last) / 1000, .05); last = t; if (tab === 'vane') vaneDraw(dt); else motorDraw(dt); requestAnimationFrame(loop); })(last);
+})();
+</script>
+</body>
+</html>
